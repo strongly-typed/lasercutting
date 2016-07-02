@@ -46,17 +46,6 @@ def rotate_point(point, angle):
     y = sin(angle) * point[0] + cos(angle) * point[1]
     return (x, y)
 
-def mm2px(in_mm):
-	""" convert mm -> userunit """
-	in_pixel = inkex.unittouu("%fmm" % in_mm)
-	return in_pixel
-
-def points_to_svgd(p):
-    svgd = ''
-    for x in p:
-        svgd += 'L%.3f,%.3f' % (mm2px(x[0]), mm2px(x[1]))
-    return svgd
-
 class Gears(inkex.Effect):
     def __init__(self):
         inkex.Effect.__init__(self)
@@ -97,7 +86,19 @@ class Gears(inkex.Effect):
                         dest="rootcircle", default=False,
                         help="Draw the root circle")
 
+    def mm2px(self, in_mm):
+        """ convert mm -> userunit """
+        in_pixel = self.unittouu("%fmm" % in_mm)
+        return in_pixel
+
+    def points_to_svgd(self, p):
+        svgd = ''
+        for x in p:
+            svgd += 'L%.3f,%.3f' % (self.mm2px(x[0]), self.mm2px(x[1]))
+        return svgd
+
     def effect(self):
+        mm = self.mm2px(32)
         teeth = self.options.teeth
         module = self.options.module
         alpha = radians(self.options.alpha)  
@@ -232,7 +233,7 @@ class Gears(inkex.Effect):
         # create left and right involute in x,y coordinates
         t = t_inner
         stop_next = 0
-        while 1 == 1:
+        while True:
             (x, y) = point_on_involute(rb, t)
 
             inv_tmp = [(x,y)]
@@ -252,7 +253,7 @@ class Gears(inkex.Effect):
 
         ## (0) start point
         p = involute_right[0]
-        path = 'M%.3f,%.3f' % (mm2px(p[0]), mm2px(p[1]))
+        path = 'M%.3f,%.3f' % (self.mm2px(p[0]), self.mm2px(p[1]))
         
         
         # rotate tooth
@@ -268,13 +269,13 @@ class Gears(inkex.Effect):
             for p in involute_right[1:]:
                 points.extend([rotate_point(p, c)])
     
-            path += points_to_svgd(points)
+            path += self.points_to_svgd(points)
     
     
             ## (2) circle on outside circle
             # (Kreisbogen auf dem Kopfkreis (ra))
             (x, y) = point_on_circle(ra, c + psi_b + psi_a)
-            path += 'A%f,%f -60 0,1 %f,%f' % (mm2px(ra), mm2px(ra), mm2px(x), mm2px(y))
+            path += 'A%f,%f -60 0,1 %f,%f' % (self.mm2px(ra), self.mm2px(ra), self.mm2px(x), self.mm2px(y))
     
             ## (3) involute_left segment
             points = []
@@ -282,25 +283,25 @@ class Gears(inkex.Effect):
                 p = rotate_point(p, 2 * psi_b + c)
                 points.extend([p])
     
-            path += points_to_svgd(points)
+            path += self.points_to_svgd(points)
     
 
             if fillet == True:
                 ## (4) Fillet to root circle
                 # (Rundung zum Fusskreis)            
                 (x, y) = point_on_circle(rf, c + 2 * psi_b + psi_r)
-                path += 'A%f,%f 0 0,0 %f,%f' % (mm2px(rr), mm2px(rr), mm2px(x), mm2px(y))
+                path += 'A%f,%f 0 0,0 %f,%f' % (self.mm2px(rr), self.mm2px(rr), self.mm2px(x), self.mm2px(y))
                 
     
                 ## (5) circle on root circle
                 # (Kreis auf dem Fusskreis (rf))
                 (x, y) = point_on_circle(rf, c + 4 * psi - psi_r)
-                path += 'A%f,%f 0 0,0 %f,%f' % (mm2px(rf), mm2px(rf), mm2px(x), mm2px(y))
+                path += 'A%f,%f 0 0,0 %f,%f' % (self.mm2px(rf), self.mm2px(rf), self.mm2px(x), self.mm2px(y))
     
                 ## (5) Second fillet at root circle
                 # (zweite Rundung im Fusskreis)
                 (x, y) = point_on_circle(rb, c + 4 * psi)   
-                path += 'A%f,%f -60 0,0 %f,%f' % (mm2px(rr), mm2px(rr), mm2px(x), mm2px(y))
+                path += 'A%f,%f -60 0,0 %f,%f' % (self.mm2px(rr), self.mm2px(rr), self.mm2px(x), self.mm2px(y))
             else:
                 # only circle on root circle
                 (tmp_x, tmp_y) = p
@@ -308,11 +309,11 @@ class Gears(inkex.Effect):
                 (x, y) = rotate_point((x, y), c + 4 * psi)
                 
                 ## simples: only segment on root circle
-#                path += 'A%f,%f -60 0,0 %f,%f' % (mm2px(rf), mm2px(rf), mm2px(x), mm2px(y))    
+#                path += 'A%f,%f -60 0,0 %f,%f' % (self.mm2px(rf), self.mm2px(rf), self.mm2px(x), self.mm2px(y))    
 
                 ## advanced: ellepsis
 #                dist = sqrt((tmp_x - x)**2 + (tmp_y - y)**2)
-#                path += 'A%f,%f %f 0,0 %f,%f' % (mm2px(dist/1.5), mm2px(dist/2.0), degrees(c + 2 * psi ) - 90.0, mm2px(x), mm2px(y))               
+#                path += 'A%f,%f %f 0,0 %f,%f' % (self.mm2px(dist/1.5), self.mm2px(dist/2.0), degrees(c + 2 * psi ) - 90.0, self.mm2px(x), self.mm2px(y))               
                 
                 ## most advanced: 3 circles with tangential match
                 rounding = 0.25
@@ -328,8 +329,8 @@ class Gears(inkex.Effect):
                 scale = (l2-rounding)/(l2)
                 (x4, y4) = (x3 * scale, y3 * scale)
               
-#                path += 'L%.3f,%.3f' % (mm2px(x3), mm2px(y3))
-                path += 'A%f,%f %f 0,0 %f,%f' % (mm2px(rounding), mm2px(rounding), 0, mm2px(x4), mm2px(y4))
+#                path += 'L%.3f,%.3f' % (self.mm2px(x3), self.mm2px(y3))
+                path += 'A%f,%f %f 0,0 %f,%f' % (self.mm2px(rounding), self.mm2px(rounding), 0, self.mm2px(x4), self.mm2px(y4))
                 
                 # next point
                 (x1, y1) = rotate_point(involute_right[0], 4 * psi + c)
@@ -344,11 +345,11 @@ class Gears(inkex.Effect):
                 
 
                 rounding2 = sqrt(x4**2 + y4**2)
-#                path += 'L%.3f,%.3f' % (mm2px(x3), mm2px(y3))
-                path += 'A%f,%f %f 0,1 %f,%f' % (mm2px(rounding2), mm2px(rounding2), 0, mm2px(x4), mm2px(y4))
+#                path += 'L%.3f,%.3f' % (self.mm2px(x3), self.mm2px(y3))
+                path += 'A%f,%f %f 0,1 %f,%f' % (self.mm2px(rounding2), self.mm2px(rounding2), 0, self.mm2px(x4), self.mm2px(y4))
 
 
-                path += 'A%f,%f %f 0,0 %f,%f' % (mm2px(rounding), mm2px(rounding), 0, mm2px(x1), mm2px(y1))
+                path += 'A%f,%f %f 0,0 %f,%f' % (self.mm2px(rounding), self.mm2px(rounding), 0, self.mm2px(x1), self.mm2px(y1))
 
 
         ## close path
@@ -380,9 +381,9 @@ class Gears(inkex.Effect):
         axle_attribs = {'style':simplestyle.formatStyle(style)}
         
         circ = inkex.etree.Element(inkex.addNS('circle','svg'), axle_attribs)
-        circ.set('cx',      str(mm2px(0)))
-        circ.set('cy',      str(mm2px(0)))
-        circ.set('r',       str(mm2px(axle)))
+        circ.set('cx',      str(self.mm2px(0)))
+        circ.set('cy',      str(self.mm2px(0)))
+        circ.set('r',       str(self.mm2px(axle)))
 
         g.append(circ)
 
@@ -406,9 +407,9 @@ class Gears(inkex.Effect):
         
         for radius in radiuslist:
             circ = inkex.etree.Element(inkex.addNS('circle','svg'), circ_attribs)
-            circ.set('cx',      str(mm2px(0)))
-            circ.set('cy',      str(mm2px(0)))
-            circ.set('r',       str(mm2px(radius)))
+            circ.set('cx',      str(self.mm2px(0)))
+            circ.set('cy',      str(self.mm2px(0)))
+            circ.set('r',       str(self.mm2px(radius)))
 
             g.append(circ)
 
